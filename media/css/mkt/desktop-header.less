@@ -56,14 +56,26 @@ body[data-page-type='search'] #search {
     height: 100%;
 }
 
+#site-header nav {
+    float: right;
+    overflow: visible;
+}
+
+.logged #site-header nav {
+    height: 80px;
+    width: 282px;
+}
+
 #search {
+    .border-box();
     display: block;
-    position: absolute;
-    right: 50px;
+    float: right;
+    width: 230px;
 }
 
 .logged #search {
-    right: 35px;
+    position: absolute;
+    right: 40px;
 }
 
 #site-header, .classic-header {
@@ -115,13 +127,14 @@ body, .home {
     }
     &.browserid {
         display: block;
+        float: right;
         height: 100%;
         line-height: 80px;
         margin: 0;
+        position: static;
         text-align: right;
-        position: absolute;
         top: 0;
-        width: 60px;
+        width: auto;
         &.loading-submit {
             .hidetext;
             .webkit-spin;
@@ -130,6 +143,27 @@ body, .home {
                 display: none;
             }
         }
+    }
+    &.icon.browserid {
+        // text-indent override needed in webkit
+        // otherwise sign-in link is behind the search
+        // box when floated.
+        text-indent: 0;
+    }
+    &.browserid.loading-submit {
+        text-indent: 100%;
+        width: 40px;
+    }
+}
+
+.logged .header-button {
+    &.browserid {
+        float: none;
+        position: absolute;
+        width: 40px;
+    }
+    &.icon.browserid {
+        text-indent: -1000%;
     }
 }
 
@@ -143,9 +177,9 @@ body, .home {
 #site-search-suggestions {
     .box-shadow(0 0 1px);
     height: auto;
-    margin: -24px 62px 0 0;
-    position: static;
-    float: right;
+    margin-top: 16px;
+    position: absolute;
+    top: 50%;
     width: 230px;
     z-index: 11;
     .wrap {
