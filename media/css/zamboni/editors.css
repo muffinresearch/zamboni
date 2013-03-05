@@ -213,7 +213,7 @@ ul.tabnav {
     list-style-type: none;
     text-align: left;
     margin-bottom: 0;
-    padding: 5px 14px;
+    padding: 5px 14px 0 14px;
 }
 .html-rtl ul.tabnav {
     text-align: right;
@@ -221,7 +221,7 @@ ul.tabnav {
 ul.tabnav li {
     display: inline;
     position: relative;
-    top: 2px;
+    top: 1px;
     margin: 0px 4px;
 }
 ul.tabnav li a {
@@ -229,7 +229,7 @@ ul.tabnav li a {
     text-decoration: none;
     color: #223355;
     background-color: #E0EFFD;
-    padding: 5px 10px;
+    padding: 5px 10px 10px 10px;
     border: 1px solid transparent;
     border-bottom: none;
     -moz-border-radius-topleft:5px;
