@@ -17,7 +17,6 @@ from amo.decorators import (json_view, login_required, post_required,
 from lib.metrics import record_action
 from mkt.fragments.decorators import bust_fragments_on_post
 
-from reviews.forms import ReviewReplyForm
 from reviews.models import Review, ReviewFlag
 from reviews.views import get_flags
 from stats.models import ClientData, Contribution
@@ -53,11 +52,6 @@ def review_list(request, addon, review_id=None, user_id=None, rating=None):
     if review_id is not None:
         qs = qs.filter(pk=review_id)
         ctx['page'] = 'detail'
-        # If this is a dev reply, find the first msg for context.
-        review = get_object_or_404(Review, pk=review_id)
-        if review.reply_to_id:
-            review_id = review.reply_to_id
-            ctx['reply'] = review
     elif user_id is not None:
         qs = qs.filter(user=user_id)
         ctx['page'] = 'user'
@@ -68,8 +62,6 @@ def review_list(request, addon, review_id=None, user_id=None, rating=None):
         qs = qs.filter(is_latest=True)
 
     ctx['ratings'] = ratings = amo.utils.paginate(request, qs, 20)
-    if not ctx.get('reply'):
-        ctx['replies'] = Review.get_replies(ratings.object_list)
     if request.user.is_authenticated():
         ctx['review_perms'] = {
             'is_admin': acl.action_allowed(request, 'Addons', 'Edit'),
@@ -88,39 +80,6 @@ def review_list(request, addon, review_id=None, user_id=None, rating=None):
 @post_required
 def edit(request, addon, review_id):
     return http.HttpResponse()
-
-
-@bust_fragments_on_post('/app/{app_slug}')
-@addon_view
-@login_required
-@post_required
-def reply(request, addon, review_id):
-    is_admin = acl.action_allowed(request, 'Addons', 'Edit')
-    is_author = acl.check_addon_ownership(request, addon, dev=True)
-    if not (is_admin or is_author):
-        raise PermissionDenied
-
-    review = get_object_or_404(Review.objects, pk=review_id, addon=addon)
-    form = ReviewReplyForm(request.POST or None)
-    if form.is_valid():
-        d = dict(reply_to=review, addon=addon,
-                 defaults=dict(user=request.amo_user))
-        reply, new = Review.objects.get_or_create(**d)
-        for k, v in _review_details(request, addon, form).items():
-            setattr(reply, k, v)
-        reply.save()
-        action = 'New' if new else 'Edited'
-        if new:
-            amo.log(amo.LOG.ADD_REVIEW, addon, reply)
-        else:
-            amo.log(amo.LOG.EDIT_REVIEW, addon, reply)
-
-        log.debug('%s reply to %s: %s' % (action, review_id, reply.id))
-        messages.success(request,
-                         _('Your reply was successfully added.') if new else
-                         _('Your reply was successfully updated.'))
-
-    return redirect(addon.get_ratings_url('list'))
 
 
 @bust_fragments_on_post('/app/{app_slug}')
@@ -197,18 +156,6 @@ def add(request, addon):
                                                         request.user.id))
                 messages.success(request,
                                  _('Your review was updated successfully!'))
-
-                # If there is a developer reply to the review, delete it. We do
-                # this per bug 777059.
-                try:
-                    reply = existing_review.replies.all()[0]
-                except IndexError:
-                    pass
-                else:
-                    log.debug('[Review:%s] Deleted reply to %s' % (
-                        reply.id, existing_review.id))
-                    reply.delete()
-
             else:
                 # If there isn't a review to overwrite, create a new review.
                 review = Review.objects.create(client_data=client_data,
