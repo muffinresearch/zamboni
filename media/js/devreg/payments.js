@@ -103,10 +103,11 @@ define('payments', [], function() {
                     }
                     // Enable checkboxes for those that we have price info for.
                     $chkbox.prop('disabled', false)
+                           .prop('checked', true)
                            .parent('label').removeClass('disabled')
                            .closest('tr').find('.local-retail')
                            .text(price.price +' '+ price.currency)
-                           .toggle($chkbox.prop('checked'));
+                           .show();
                     seen.push($chkbox[0]);
                 }
                 // Disable everything else.
