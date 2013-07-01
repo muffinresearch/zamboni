@@ -7,7 +7,7 @@ define('payments', [], function() {
 
     var apiErrorMsg = $regions.data('apiErrorMsg');
     var disabledRegions = $regions.data('disabledRegions');
-    var freeWithInAppId = $regions.data('freeWithInappId');
+    var tierZeroId = $regions.data('tierZeroId');
     var notApplicableMsg = $regions.data('notApplicableMsg');
     var paymentMethods = $regions.data('paymentMethods') || {};
     var pricesApiEndpoint = $regions.data('pricelistApiUrl') + '{0}/';
@@ -92,38 +92,49 @@ define('payments', [], function() {
 
     function updatePrices() {
         /*jshint validthis:true */
-        var apiUrl;
         var $this = $(this);
-        var selectedPrice = parseInt($this.val(), 10);
+        var selectedPrice = $this.val();
 
         // Check for NaN which will be caused by selectedPrice being ''.
-        selectedPrice = isNaN(selectedPrice) ? false : selectedPrice;
+        if (selectedPrice != 'free') {
+            selectedPrice = parseInt(selectedPrice, 10);
+            selectedPrice = isNaN(selectedPrice) ? false : selectedPrice;
+        }
 
+        // No-op if nothing has changed.
         if (currentPrice === selectedPrice) {
             return;
         }
 
+        // Handle the 'Please select a price' case.
         if (selectedPrice === false) {
             $regions.find('input[type=checkbox]').each(disableCheckbox);
             currentPrice = selectedPrice;
             return;
         }
 
-        apiUrl = format(pricesApiEndpoint, selectedPrice);
-
         // If free with in-app is selected, check "Yes" then make the 'No' radio
         // disabled and hide it.
-        if (selectedPrice === freeWithInAppId) {
+        if (selectedPrice == 'free') {
             $('input[name=allow_inapp][value=True]').prop('checked', true);
             $('input[name=allow_inapp][value=False]').prop('disabled', true)
                                                      .parent('label').hide();
+
+            // Enable all the checkboxes.
+            $regions.find('input[type=checkbox]').prop('disabled', false)
+                                                 .closest('label').removeClass('disabled')
+                                                 .closest('tr').find('.local-method, .local-retail')
+                                                 .text(notApplicableMsg);
+
+            currentPrice = selectedPrice;
+            return;
         } else {
             $('input[name=allow_inapp][value=False]').prop('disabled', false)
                                                      .parent('label').show();
         }
 
         $.ajax({
-            url: apiUrl,
+            url: format(pricesApiEndpoint, selectedPrice),
             beforeSend: function() {
                 $regionsIsland.addClass('loading');
             },
@@ -148,20 +159,11 @@ define('payments', [], function() {
 
                     var $tr = $chkbox.closest('tr');
 
-                    // Display local currency for price.
                     $tr.find('.local-retail')
                        .text(price.price + ' ' + price.currency);
 
-                    if (selectedPrice === freeWithInAppId) {
-                        // Show not applicable as this is a free app with
-                        // in-app payments.
-                        $tr.find('.local-method')
-                           .text(notApplicableMsg);
-                    } else {
-                        // Display local billing method.
-                        $tr.find('.local-method')
-                           .text(billingMethodText);
-                    }
+                    $tr.find('.local-method')
+                       .text(selectedPrice === tierZeroId ? notApplicableMsg : billingMethodText);
 
                     seen.push($chkbox[0]);
                 }

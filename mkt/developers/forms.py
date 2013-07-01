@@ -41,6 +41,7 @@ from mkt.constants import APP_IMAGE_SIZES, MAX_PACKAGED_APP_SIZE
 from mkt.constants.ratingsbodies import (ALL_RATINGS, RATINGS_BODIES,
                                          RATINGS_BY_NAME)
 from mkt.site.forms import AddonChoiceField
+from mkt.regions import ALL_PAID_REGION_IDS
 from mkt.webapps.models import (AddonExcludedRegion, ContentRating, ImageAsset,
                                 Webapp)
 
@@ -708,9 +709,13 @@ class RegionForm(forms.Form):
             self.fields['other_regions'].label = _(u'Other regions')
 
             # Premium form was valid.
-            if self.price:
+            if self.price and self.price != 'free':
                 self.price_region_ids = (self.price.pricecurrency_set
                                          .values_list('region', flat=True))
+            # Free app with in-app payments for this we just want to make
+            # sure it's in a region that allows payments.
+            elif self.price and self.price == 'free':
+                self.price_region_ids = ALL_PAID_REGION_IDS
             # Premium form wasn't valid and it is a POST. Since we can't
             # determine what price they wanted, just make sure it isn't a
             # disabled price.
