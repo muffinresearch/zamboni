@@ -109,8 +109,13 @@ define('payments', [], function() {
         // Handle the 'Please select a price' case.
         if (selectedPrice === false) {
             $regions.find('input[type=checkbox]').each(disableCheckbox);
+            $('#id_other_regions').prop('disabled', true)
+                                  .next('label').addClass('disabled');
             currentPrice = selectedPrice;
             return;
+        } else {
+            $('#id_other_regions').prop('disabled', false)
+                                  .next('label').removeClass('disabled');
         }
 
         // If free with in-app is selected, check "Yes" then make the 'No' radio

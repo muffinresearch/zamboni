@@ -201,6 +201,41 @@ class TestRegionForm(amo.tests.WebappTestCase):
         self.assertSetEqual(self.app.get_region_ids(),
                             [mkt.regions.PL.id])
 
+    mock.patch('mkt.developers.forms.ALL_PAID_REGION_IDS',
+               new=set([1,2,3,4,5]))
+    def test_inappropriate_regions(self):
+        self.app.update(premium_type=amo.ADDON_PREMIUM)
+        form = forms.RegionForm(data=None, **self.kwargs)
+        form.price_region_ids = set([2, 3, 5])
+        form.disabled_regions = set([5])
+        form.allow_worldwide_paid = True
+
+        # 5 is in disabled_regions so should be True.
+        form.region_ids = [5]
+        assert form.has_inappropriate_regions()
+
+        # 1 worldwide and worldwide is allowed so should be False.
+        form.region_ids = [1]
+        assert not form.has_inappropriate_regions()
+
+        # 1 worldwide and worldwide is not allowed so should be True.
+        form.allow_worldwide_paid = False
+        form.region_ids = [1]
+        assert form.has_inappropriate_regions()
+
+        # 4 is not in price_region_ids so should be True.
+        form.region_ids = [4]
+        assert form.has_inappropriate_regions()
+
+        # 2 is in price_region_ids so should be False.
+        form.region_ids = [2]
+        assert not form.has_inappropriate_regions()
+
+    def test_inappropriate_regions_free_app(self):
+        self.app.update(premium_type=amo.ADDON_FREE)
+        form = forms.RegionForm(data=None, **self.kwargs)
+        eq_(form.has_inappropriate_regions(), None)
+
     def test_free_inapp_with_non_paid_region(self):
         # Start with a free app with in_app payments.
         self.app.update(premium_type=amo.ADDON_FREE_INAPP)
@@ -295,6 +330,24 @@ class TestRegionForm(amo.tests.WebappTestCase):
         assert form.is_valid(), form.errors
         form.save()
         eq_(self.app.get_region_ids(True), [mkt.regions.WORLDWIDE.id])
+
+    def test_worldwide_paid(self):
+        self.app.update(premium_type=amo.ADDON_PREMIUM)
+        self.kwargs['price'] = Price.objects.get(id=1)
+        form = forms.RegionForm(data={'other_regions': 'on'}, **self.kwargs)
+        assert form.is_valid(), form.errors
+        form.save()
+        eq_(self.app.get_region_ids(True), [mkt.regions.WORLDWIDE.id])
+
+    def test_worldwide_not_allowed_flag(self):
+        self.app.update(premium_type=amo.ADDON_PREMIUM)
+        self.kwargs['price'] = Price.objects.get(id=1)
+        form = forms.RegionForm(data={'other_regions': 'on'}, **self.kwargs)
+        form.allow_worldwide_paid = False
+        assert not form.is_valid()
+        form = forms.RegionForm(data={'other_regions': 'on'}, **self.kwargs)
+        form.allow_worldwide_paid = True
+        assert form.is_valid()
 
     def test_no_regions(self):
         form = forms.RegionForm(data={}, **self.kwargs)

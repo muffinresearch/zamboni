@@ -526,6 +526,21 @@ class TestRegions(amo.tests.TestCase):
         eq_(td.find('div[data-disabled]').attr('data-disabled'), '[]')
         eq_(td.find('.note.disabled-regions').length, 0)
 
+    def test_world_wide_region_id_is_checked(self):
+        self.make_premium(self.webapp)
+        price = Price.objects.filter()[0]
+        res = self.client.post(
+            self.url, data={
+                'price': price.pk,
+                'free_platforms': ['free-%s' % dt.class_name for dt in
+                                   self.webapp.device_types],
+                'paid_platforms': ['paid-%s' % dt.class_name for dt in
+                                   self.webapp.device_types],
+                'other_regions': 'on'
+            }, follow=True)
+        pqr = pq(res.content)
+        eq_(pqr('#id_other_regions').attr('checked'), 'checked')
+
 
 class PaymentsBase(amo.tests.TestCase):
     fixtures = fixture('user_editor', 'user_999')

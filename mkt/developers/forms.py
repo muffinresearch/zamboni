@@ -675,6 +675,7 @@ class RegionForm(forms.Form):
         self.request = kw.pop('request', None)
         self.price = kw.pop('price', None)
         self.region_ids = self.product.get_region_ids()
+        self.allow_worldwide_paid = True
         super(RegionForm, self).__init__(*args, **kw)
 
         is_paid = self._product_is_paid()
@@ -689,8 +690,7 @@ class RegionForm(forms.Form):
 
         self.initial = {
             'regions': self.regions_before,
-            'other_regions': not self.future_exclusions.exists() and
-                             not is_paid
+            'other_regions': not self.future_exclusions.exists()
         }
 
         # Games cannot be listed in Brazil without a content rating.
@@ -704,10 +704,6 @@ class RegionForm(forms.Form):
 
         # If the app is paid, disable regions that use payments.
         if is_paid:
-            self.disabled_regions.add(mkt.regions.WORLDWIDE.id)
-            self.fields['other_regions'].widget.attrs['disabled'] = 'disabled'
-            self.fields['other_regions'].label = _(u'Other regions')
-
             # Premium form was valid.
             if self.price and self.price != 'free':
                 self.price_region_ids = (self.price.pricecurrency_set
@@ -743,20 +739,39 @@ class RegionForm(forms.Form):
         otherwise be registered in."""
 
         if self._product_is_paid():
-            inappropriate_regions = (set(mkt.regions.ALL_REGION_IDS)
-                .difference(self.price_region_ids)
-                .union(self.disabled_regions))
-            return (set(self.region_ids).intersection(inappropriate_regions))
+            # From all possible regions inc. worldwide
+            # remove the known valid price regions.
+            ir = (set(mkt.regions.ALL_REGION_IDS)
+                      .difference(self.price_region_ids))
+
+            # If worldwide is allowed then create a new set
+            # without the worldwide id.
+            if self.allow_worldwide_paid:
+                ir = ir.difference(set([mkt.regions.WORLDWIDE.id]))
+
+            # Now create a new set with the added disabled regions.
+            ir = ir.union(self.disabled_regions)
+
+            # Return a new set containing any of the submitted regions
+            # that are listed within the inappropriate regions set.
+            return set(self.region_ids).intersection(ir)
 
     def clean(self):
         data = self.cleaned_data
-        if (not data.get('regions') and not data.get('other_regions')
-                and not self.is_toggling()):
+        other_regions = data.get('other_regions')
+        regions = data.get('regions')
+
+        if not regions and not other_regions and not self.is_toggling():
             raise forms.ValidationError(
                 _('You must select at least one region or '
                   '"Other and new regions."'))
-        if data.get('regions'):
+
+        if regions or other_regions:
             self.region_ids = [int(r) for r in data['regions']]
+
+            if other_regions:
+                self.region_ids.append(mkt.regions.WORLDWIDE.id)
+
             if self.has_inappropriate_regions():
                 raise forms.ValidationError(
                     _('You have selected a region that is not valid for your '
