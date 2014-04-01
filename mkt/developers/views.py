@@ -58,6 +58,7 @@ from mkt.developers.forms import (APIConsumerForm, AppFormBasic,
 from mkt.developers.models import PreloadTestPlan
 from mkt.developers.tasks import run_validator, save_test_plan
 from mkt.developers.utils import check_upload, handle_vip
+from mkt.webpay.webpay_jwt import get_product_jwt, WebAppProduct
 from mkt.submit.forms import AppFeaturesForm, NewWebappVersionForm
 from mkt.webapps.models import IARCInfo, Webapp
 from mkt.webapps.tasks import _update_manifest, update_manifests
@@ -1084,3 +1085,28 @@ def _filter_transactions(qs, data):
 
 def testing(request):
     return render(request, 'developers/testing.html')
+
+
+@addon_view
+def debug(request, addon):
+    pay_request = None
+    if settings.DEBUG:
+        if addon.is_premium():
+            pay_request = get_product_jwt(
+                WebAppProduct(addon),
+                user=request.amo_user,
+                region=request.REGION,
+                source=request.REQUEST.get('src', ''),
+                lang=request.LANG,
+            )
+
+        urls = {
+            'es': '%s/apps/webapp/%s' % (settings.ES_URLS[0], addon.pk)
+        }
+
+        context = {'app': addon, 'urls': urls}
+        if pay_request:
+            context['pay_request'] = pay_request['webpayJWT']
+
+        return render(request, 'developers/debug.html', context)
+    raise http.Http404

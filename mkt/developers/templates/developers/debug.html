@@ -1,0 +1,18 @@
+{% extends 'developers/base_impala.html' %}
+{% set title = _('Debug') %}
+
+{% block title %}{{ hub_page_title(title) }}{% endblock %}
+
+{% block content %}
+  <h1>{{ title }}</h1>
+  <section class="primary">
+    <div class="island">
+      <p>See <a href="{{ urls['es'] }}">elastic search entry</a>.</p>
+      {% if pay_request %}
+      <p>Buy <a href="/mozpay/?req={{ pay_request }}">without mozPay</a>.</p>
+      {% else %}
+      <p>App is not premium so buying without mozPay isn't possible</p>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}
