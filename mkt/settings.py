@@ -210,7 +210,7 @@ LOGGING_CONFIG = None
 
 MANAGERS = ADMINS
 MEDIA_ROOT = path('media')
-MEDIA_URL = '/media/'
+MEDIA_URL = os.environ.get('ZAMBONI_MEDIA_URL', '/media/')
 
 PASSWORD_HASHERS = ()
 
